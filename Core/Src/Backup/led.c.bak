@@ -1,0 +1,44 @@
+#include "led.h"
+#include "main.h"
+
+static uint32_t ui32LedEnabled = 0;
+static uint32_t ui32BlinkLength = 0;
+static uint32_t ui32BlinkTick = 0;
+
+int32_t led_set_blinkspeed(uint32_t blinkspeed)
+{
+    ui32BlinkLength = (SYSTICK_FREQ)/(2*blinkspeed);
+}
+
+int32_t led_enable(void)
+{
+    ui32LedEnabled = ENABLE;
+    ui32BlinkTick = HAL_GetTick();
+}
+
+int32_t led_disable(void)
+{
+    ui32LedEnabled = DISABLE;
+}
+
+int32_t led_update(void)
+{
+    
+    if(!ui32LedEnabled || !ui32BlinkLength)
+    {
+        return SUCCESS;
+    }
+    
+    if(HAL_GetTick() < (ui32BlinkTick))
+    {
+        ui32BlinkTick = HAL_GetTick();
+    }
+
+    if(HAL_GetTick() > (ui32BlinkTick+ui32BlinkLength))
+    {
+        HAL_GPIO_TogglePin(LED_PORT,LED_PIN);
+        ui32BlinkTick = HAL_GetTick();
+    }
+
+    return SUCCESS;
+}

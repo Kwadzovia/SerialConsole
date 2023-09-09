@@ -1,0 +1,975 @@
+ARM GAS  /tmp/cc2qJzX5.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.eabi_attribute 27, 1
+   3              		.eabi_attribute 28, 1
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.file	"console.c"
+  14              		.text
+  15              	.Ltext0:
+  16              		.cfi_sections	.debug_frame
+  17              		.section	.rodata.consoleHomePrint.str1.4,"aMS",%progbits,1
+  18              		.align	2
+  19              	.LC0:
+  20 0000 0D0A456E 		.ascii	"\015\012Enter an option...\015\0121:\011Enable LED\015"
+  20      74657220 
+  20      616E206F 
+  20      7074696F 
+  20      6E2E2E2E 
+  21 0024 0A323A09 		.ascii	"\0122:\011Disable LED\015\0123:\011Set LED Blinkspe"
+  21      44697361 
+  21      626C6520 
+  21      4C45440D 
+  21      0A333A09 
+  22 0048 65640D0A 		.ascii	"ed\015\0124:\011Read LED Blinkspeed\015\012\012\000"
+  22      343A0952 
+  22      65616420 
+  22      4C454420 
+  22      426C696E 
+  23              		.section	.text.consoleHomePrint,"ax",%progbits
+  24              		.align	1
+  25              		.arch armv7e-m
+  26              		.syntax unified
+  27              		.thumb
+  28              		.thumb_func
+  29              		.fpu fpv4-sp-d16
+  31              	consoleHomePrint:
+  32              	.LFB133:
+  33              		.file 1 "Core/Src/console.c"
+   1:Core/Src/console.c **** #include "main.h"
+   2:Core/Src/console.c **** #include "console.h"
+   3:Core/Src/console.c **** #include "usart.h"
+   4:Core/Src/console.c **** #include <string.h>
+   5:Core/Src/console.c **** #include "led.h"
+   6:Core/Src/console.c **** 
+   7:Core/Src/console.c **** uint8_t g_ui8NewDataFlag = 0;
+   8:Core/Src/console.c **** 
+   9:Core/Src/console.c **** static uint8_t ui8RxChar = 0;
+  10:Core/Src/console.c **** static uint8_t ui8RxIndex = 0;
+  11:Core/Src/console.c **** static uint8_t aui8RxBuffer[0x100] = {0};
+  12:Core/Src/console.c **** static eConsoleState = E_CONSOLE_READ_OPTION;
+  13:Core/Src/console.c **** 
+ARM GAS  /tmp/cc2qJzX5.s 			page 2
+
+
+  14:Core/Src/console.c **** void consoleInit(void)
+  15:Core/Src/console.c **** {
+  16:Core/Src/console.c ****   led_set_blinkspeed(1);
+  17:Core/Src/console.c ****   consoleHomePrint();
+  18:Core/Src/console.c ****   HAL_UART_Receive_IT(&huart2,&ui8RxChar,1);
+  19:Core/Src/console.c **** }
+  20:Core/Src/console.c **** 
+  21:Core/Src/console.c **** void consoleUpdate(void)
+  22:Core/Src/console.c **** {
+  23:Core/Src/console.c ****     consoleCheckInput();
+  24:Core/Src/console.c **** }
+  25:Core/Src/console.c **** 
+  26:Core/Src/console.c **** static void consoleProcessBuffer(void)
+  27:Core/Src/console.c **** {
+  28:Core/Src/console.c ****   uint32_t ui32UserInput;
+  29:Core/Src/console.c ****   uint32_t ui32InvalidInput = 0;
+  30:Core/Src/console.c ****   uint32_t clearIndex = 0;
+  31:Core/Src/console.c **** 
+  32:Core/Src/console.c ****   char acCharReadback[MAX_READBACK_CHARS];
+  33:Core/Src/console.c **** 
+  34:Core/Src/console.c ****   switch(eConsoleState)
+  35:Core/Src/console.c ****   {
+  36:Core/Src/console.c ****     case E_CONSOLE_READ_OPTION:
+  37:Core/Src/console.c **** 
+  38:Core/Src/console.c ****       ui32UserInput = (uint32_t)atoi(aui8RxBuffer);
+  39:Core/Src/console.c ****         if(ui32UserInput == E_USER_OPTION_SET_LED_SPEED)
+  40:Core/Src/console.c ****         {
+  41:Core/Src/console.c ****           eConsoleState = E_CONSOLE_SET_LED_BLINKSPEED;
+  42:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\nEnter Blinkspeed...\r\n", 24, HAL_UART_STATE_TIMEOUT);
+  43:Core/Src/console.c ****         }
+  44:Core/Src/console.c ****         else if(ui32UserInput == E_USER_OPTION_READ_LED_SPEED)
+  45:Core/Src/console.c ****         {   
+  46:Core/Src/console.c ****           for(clearIndex = 0;clearIndex < MAX_READBACK_CHARS; clearIndex++)
+  47:Core/Src/console.c ****           {
+  48:Core/Src/console.c ****             acCharReadback[clearIndex] = '\0';
+  49:Core/Src/console.c ****           }
+  50:Core/Src/console.c ****           ui32UserInput = led_read_blinkspeed();
+  51:Core/Src/console.c ****           snprintf(acCharReadback, MAX_READBACK_CHARS,"%d",ui32UserInput);
+  52:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\nLED BLINKSPEED:\t", 19, HAL_UART_STATE_TIMEOUT);
+  53:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, acCharReadback, MAX_READBACK_CHARS, HAL_UART_STATE_TIMEOUT);
+  54:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\n", 3, HAL_UART_STATE_TIMEOUT);
+  55:Core/Src/console.c ****           consoleReturn();
+  56:Core/Src/console.c ****         }
+  57:Core/Src/console.c ****         else if(ui32UserInput == E_USER_OPTION_ENABLE_LED)
+  58:Core/Src/console.c ****         {
+  59:Core/Src/console.c ****           led_enable();
+  60:Core/Src/console.c ****           consoleReturn();
+  61:Core/Src/console.c ****         }
+  62:Core/Src/console.c ****         else if(ui32UserInput == E_USER_OPTION_DISABLE_LED)
+  63:Core/Src/console.c ****         {
+  64:Core/Src/console.c ****           led_disable();
+  65:Core/Src/console.c ****           consoleReturn();
+  66:Core/Src/console.c ****         }
+  67:Core/Src/console.c ****         else
+  68:Core/Src/console.c ****         {
+  69:Core/Src/console.c ****           ui32InvalidInput = 1;
+  70:Core/Src/console.c ****         }
+ARM GAS  /tmp/cc2qJzX5.s 			page 3
+
+
+  71:Core/Src/console.c ****       break;
+  72:Core/Src/console.c **** 
+  73:Core/Src/console.c ****     case E_CONSOLE_SET_LED_BLINKSPEED:
+  74:Core/Src/console.c **** 
+  75:Core/Src/console.c ****       ui32UserInput = (uint32_t)atoi(aui8RxBuffer);
+  76:Core/Src/console.c ****       ui32InvalidInput = (ui32UserInput == 0) ? 1 : 0;
+  77:Core/Src/console.c **** 
+  78:Core/Src/console.c ****       if(!ui32InvalidInput)
+  79:Core/Src/console.c ****       {
+  80:Core/Src/console.c ****         led_set_blinkspeed(ui32UserInput);
+  81:Core/Src/console.c ****       }
+  82:Core/Src/console.c ****       consoleReturn();
+  83:Core/Src/console.c ****       break;
+  84:Core/Src/console.c **** 
+  85:Core/Src/console.c ****       
+  86:Core/Src/console.c ****   }
+  87:Core/Src/console.c **** 
+  88:Core/Src/console.c ****   if(ui32InvalidInput)
+  89:Core/Src/console.c ****   {
+  90:Core/Src/console.c ****     HAL_UART_Transmit(&huart2, "\nError: \"", 10, HAL_UART_STATE_TIMEOUT);
+  91:Core/Src/console.c ****     HAL_UART_Transmit(&huart2, aui8RxBuffer, ui8RxIndex, HAL_UART_STATE_TIMEOUT);
+  92:Core/Src/console.c ****     HAL_UART_Transmit(&huart2, "\" is not a valid input.\r\n", 26, HAL_UART_STATE_TIMEOUT);
+  93:Core/Src/console.c ****     consoleReturn();
+  94:Core/Src/console.c ****   }
+  95:Core/Src/console.c ****   
+  96:Core/Src/console.c **** }
+  97:Core/Src/console.c **** 
+  98:Core/Src/console.c **** static void consoleHomePrint(void)
+  99:Core/Src/console.c **** {
+  34              		.loc 1 99 1 view -0
+  35              		.cfi_startproc
+  36              		@ args = 0, pretend = 0, frame = 0
+  37              		@ frame_needed = 0, uses_anonymous_args = 0
+  38 0000 08B5     		push	{r3, lr}
+  39              	.LCFI0:
+  40              		.cfi_def_cfa_offset 8
+  41              		.cfi_offset 3, -8
+  42              		.cfi_offset 14, -4
+ 100:Core/Src/console.c ****     HAL_UART_Transmit(&huart2, "\r\nEnter an option...\r\n1:\tEnable LED\r\n2:\tDisable LED\r\n3:\t
+  43              		.loc 1 100 5 view .LVU1
+  44 0002 A023     		movs	r3, #160
+  45 0004 6622     		movs	r2, #102
+  46 0006 0249     		ldr	r1, .L3
+  47 0008 0248     		ldr	r0, .L3+4
+  48 000a FFF7FEFF 		bl	HAL_UART_Transmit
+  49              	.LVL0:
+ 101:Core/Src/console.c **** }
+  50              		.loc 1 101 1 is_stmt 0 view .LVU2
+  51 000e 08BD     		pop	{r3, pc}
+  52              	.L4:
+  53              		.align	2
+  54              	.L3:
+  55 0010 00000000 		.word	.LC0
+  56 0014 00000000 		.word	huart2
+  57              		.cfi_endproc
+  58              	.LFE133:
+  60              		.section	.text.consoleReturn,"ax",%progbits
+ARM GAS  /tmp/cc2qJzX5.s 			page 4
+
+
+  61              		.align	1
+  62              		.syntax unified
+  63              		.thumb
+  64              		.thumb_func
+  65              		.fpu fpv4-sp-d16
+  67              	consoleReturn:
+  68              	.LFB134:
+ 102:Core/Src/console.c **** 
+ 103:Core/Src/console.c **** static void consoleReturn(void)
+ 104:Core/Src/console.c **** {
+  69              		.loc 1 104 1 is_stmt 1 view -0
+  70              		.cfi_startproc
+  71              		@ args = 0, pretend = 0, frame = 0
+  72              		@ frame_needed = 0, uses_anonymous_args = 0
+  73 0000 08B5     		push	{r3, lr}
+  74              	.LCFI1:
+  75              		.cfi_def_cfa_offset 8
+  76              		.cfi_offset 3, -8
+  77              		.cfi_offset 14, -4
+ 105:Core/Src/console.c ****     consoleHomePrint();
+  78              		.loc 1 105 5 view .LVU4
+  79 0002 FFF7FEFF 		bl	consoleHomePrint
+  80              	.LVL1:
+ 106:Core/Src/console.c ****     eConsoleState = E_CONSOLE_READ_OPTION;
+  81              		.loc 1 106 5 view .LVU5
+  82              		.loc 1 106 19 is_stmt 0 view .LVU6
+  83 0006 024B     		ldr	r3, .L7
+  84 0008 0022     		movs	r2, #0
+  85 000a 1A60     		str	r2, [r3]
+ 107:Core/Src/console.c **** }
+  86              		.loc 1 107 1 view .LVU7
+  87 000c 08BD     		pop	{r3, pc}
+  88              	.L8:
+  89 000e 00BF     		.align	2
+  90              	.L7:
+  91 0010 00000000 		.word	.LANCHOR0
+  92              		.cfi_endproc
+  93              	.LFE134:
+  95              		.section	.rodata.consoleProcessBuffer.str1.4,"aMS",%progbits,1
+  96              		.align	2
+  97              	.LC1:
+  98 0000 0D0A456E 		.ascii	"\015\012Enter Blinkspeed...\015\012\000"
+  98      74657220 
+  98      426C696E 
+  98      6B737065 
+  98      65642E2E 
+  99              		.align	2
+ 100              	.LC2:
+ 101 0018 256400   		.ascii	"%d\000"
+ 102 001b 00       		.align	2
+ 103              	.LC3:
+ 104 001c 0D0A4C45 		.ascii	"\015\012LED BLINKSPEED:\011\000"
+ 104      4420424C 
+ 104      494E4B53 
+ 104      50454544 
+ 104      3A0900
+ 105 002f 00       		.align	2
+ARM GAS  /tmp/cc2qJzX5.s 			page 5
+
+
+ 106              	.LC4:
+ 107 0030 0D0A00   		.ascii	"\015\012\000"
+ 108 0033 00       		.align	2
+ 109              	.LC5:
+ 110 0034 0A457272 		.ascii	"\012Error: \"\000"
+ 110      6F723A20 
+ 110      2200
+ 111 003e 0000     		.align	2
+ 112              	.LC6:
+ 113 0040 22206973 		.ascii	"\" is not a valid input.\015\012\000"
+ 113      206E6F74 
+ 113      20612076 
+ 113      616C6964 
+ 113      20696E70 
+ 114              		.section	.text.consoleProcessBuffer,"ax",%progbits
+ 115              		.align	1
+ 116              		.syntax unified
+ 117              		.thumb
+ 118              		.thumb_func
+ 119              		.fpu fpv4-sp-d16
+ 121              	consoleProcessBuffer:
+ 122              	.LFB132:
+  27:Core/Src/console.c ****   uint32_t ui32UserInput;
+ 123              		.loc 1 27 1 is_stmt 1 view -0
+ 124              		.cfi_startproc
+ 125              		@ args = 0, pretend = 0, frame = 16
+ 126              		@ frame_needed = 0, uses_anonymous_args = 0
+ 127 0000 10B5     		push	{r4, lr}
+ 128              	.LCFI2:
+ 129              		.cfi_def_cfa_offset 8
+ 130              		.cfi_offset 4, -8
+ 131              		.cfi_offset 14, -4
+ 132 0002 84B0     		sub	sp, sp, #16
+ 133              	.LCFI3:
+ 134              		.cfi_def_cfa_offset 24
+  28:Core/Src/console.c ****   uint32_t ui32InvalidInput = 0;
+ 135              		.loc 1 28 3 view .LVU9
+  29:Core/Src/console.c ****   uint32_t clearIndex = 0;
+ 136              		.loc 1 29 3 view .LVU10
+ 137              	.LVL2:
+  30:Core/Src/console.c **** 
+ 138              		.loc 1 30 3 view .LVU11
+  32:Core/Src/console.c **** 
+ 139              		.loc 1 32 3 view .LVU12
+  34:Core/Src/console.c ****   {
+ 140              		.loc 1 34 3 view .LVU13
+ 141 0004 3A4B     		ldr	r3, .L27
+ 142 0006 1B68     		ldr	r3, [r3]
+ 143 0008 1BB1     		cbz	r3, .L10
+ 144 000a 012B     		cmp	r3, #1
+ 145 000c 49D0     		beq	.L11
+ 146              	.LVL3:
+ 147              	.L9:
+  96:Core/Src/console.c **** 
+ 148              		.loc 1 96 1 is_stmt 0 view .LVU14
+ 149 000e 04B0     		add	sp, sp, #16
+ 150              	.LCFI4:
+ARM GAS  /tmp/cc2qJzX5.s 			page 6
+
+
+ 151              		.cfi_remember_state
+ 152              		.cfi_def_cfa_offset 8
+ 153              		@ sp needed
+ 154 0010 10BD     		pop	{r4, pc}
+ 155              	.LVL4:
+ 156              	.L10:
+ 157              	.LCFI5:
+ 158              		.cfi_restore_state
+ 159              	.LBB2:
+  38:Core/Src/console.c ****         if(ui32UserInput == E_USER_OPTION_SET_LED_SPEED)
+ 160              		.loc 1 38 7 is_stmt 1 view .LVU15
+  38:Core/Src/console.c ****         if(ui32UserInput == E_USER_OPTION_SET_LED_SPEED)
+ 161              		.loc 1 38 33 is_stmt 0 view .LVU16
+ 162 0012 3848     		ldr	r0, .L27+4
+ 163 0014 FFF7FEFF 		bl	atoi
+ 164              	.LVL5:
+  39:Core/Src/console.c ****         {
+ 165              		.loc 1 39 9 is_stmt 1 view .LVU17
+  39:Core/Src/console.c ****         {
+ 166              		.loc 1 39 11 is_stmt 0 view .LVU18
+ 167 0018 0328     		cmp	r0, #3
+ 168 001a 0AD0     		beq	.L23
+  44:Core/Src/console.c ****         {   
+ 169              		.loc 1 44 14 is_stmt 1 view .LVU19
+  44:Core/Src/console.c ****         {   
+ 170              		.loc 1 44 16 is_stmt 0 view .LVU20
+ 171 001c 0428     		cmp	r0, #4
+ 172 001e 39D0     		beq	.L24
+  57:Core/Src/console.c ****         {
+ 173              		.loc 1 57 14 is_stmt 1 view .LVU21
+  57:Core/Src/console.c ****         {
+ 174              		.loc 1 57 16 is_stmt 0 view .LVU22
+ 175 0020 0128     		cmp	r0, #1
+ 176 0022 39D0     		beq	.L25
+  62:Core/Src/console.c ****         {
+ 177              		.loc 1 62 14 is_stmt 1 view .LVU23
+  62:Core/Src/console.c ****         {
+ 178              		.loc 1 62 16 is_stmt 0 view .LVU24
+ 179 0024 0228     		cmp	r0, #2
+ 180 0026 48D1     		bne	.L18
+  64:Core/Src/console.c ****           consoleReturn();
+ 181              		.loc 1 64 11 is_stmt 1 view .LVU25
+ 182 0028 FFF7FEFF 		bl	led_disable
+ 183              	.LVL6:
+  65:Core/Src/console.c ****         }
+ 184              		.loc 1 65 11 view .LVU26
+ 185 002c FFF7FEFF 		bl	consoleReturn
+ 186              	.LVL7:
+  65:Core/Src/console.c ****         }
+ 187              		.loc 1 65 11 is_stmt 0 view .LVU27
+ 188              	.LBE2:
+  88:Core/Src/console.c ****   {
+ 189              		.loc 1 88 3 is_stmt 1 view .LVU28
+ 190 0030 EDE7     		b	.L9
+ 191              	.LVL8:
+ 192              	.L23:
+ 193              	.LBB5:
+ARM GAS  /tmp/cc2qJzX5.s 			page 7
+
+
+  41:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\nEnter Blinkspeed...\r\n", 24, HAL_UART_STATE_TIMEOUT);
+ 194              		.loc 1 41 11 view .LVU29
+  41:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\nEnter Blinkspeed...\r\n", 24, HAL_UART_STATE_TIMEOUT);
+ 195              		.loc 1 41 25 is_stmt 0 view .LVU30
+ 196 0032 2F4B     		ldr	r3, .L27
+ 197 0034 0122     		movs	r2, #1
+ 198 0036 1A60     		str	r2, [r3]
+  42:Core/Src/console.c ****         }
+ 199              		.loc 1 42 11 is_stmt 1 view .LVU31
+ 200 0038 A023     		movs	r3, #160
+ 201 003a 1822     		movs	r2, #24
+ 202 003c 2E49     		ldr	r1, .L27+8
+ 203 003e 2F48     		ldr	r0, .L27+12
+ 204              	.LVL9:
+  42:Core/Src/console.c ****         }
+ 205              		.loc 1 42 11 is_stmt 0 view .LVU32
+ 206 0040 FFF7FEFF 		bl	HAL_UART_Transmit
+ 207              	.LVL10:
+  42:Core/Src/console.c ****         }
+ 208              		.loc 1 42 11 view .LVU33
+ 209              	.LBE5:
+  88:Core/Src/console.c ****   {
+ 210              		.loc 1 88 3 is_stmt 1 view .LVU34
+ 211 0044 E3E7     		b	.L9
+ 212              	.LVL11:
+ 213              	.L16:
+ 214              	.LBB6:
+ 215              	.LBB3:
+  48:Core/Src/console.c ****           }
+ 216              		.loc 1 48 13 discriminator 3 view .LVU35
+  48:Core/Src/console.c ****           }
+ 217              		.loc 1 48 40 is_stmt 0 discriminator 3 view .LVU36
+ 218 0046 03F11002 		add	r2, r3, #16
+ 219 004a 6A44     		add	r2, sp, r2
+ 220 004c 0021     		movs	r1, #0
+ 221 004e 02F80C1C 		strb	r1, [r2, #-12]
+  46:Core/Src/console.c ****           {
+ 222              		.loc 1 46 63 is_stmt 1 discriminator 3 view .LVU37
+  46:Core/Src/console.c ****           {
+ 223              		.loc 1 46 73 is_stmt 0 discriminator 3 view .LVU38
+ 224 0052 0133     		adds	r3, r3, #1
+ 225              	.LVL12:
+ 226              	.L14:
+  46:Core/Src/console.c ****           {
+ 227              		.loc 1 46 30 is_stmt 1 discriminator 1 view .LVU39
+  46:Core/Src/console.c ****           {
+ 228              		.loc 1 46 11 is_stmt 0 discriminator 1 view .LVU40
+ 229 0054 092B     		cmp	r3, #9
+ 230 0056 F6D9     		bls	.L16
+  50:Core/Src/console.c ****           snprintf(acCharReadback, MAX_READBACK_CHARS,"%d",ui32UserInput);
+ 231              		.loc 1 50 11 is_stmt 1 view .LVU41
+  50:Core/Src/console.c ****           snprintf(acCharReadback, MAX_READBACK_CHARS,"%d",ui32UserInput);
+ 232              		.loc 1 50 27 is_stmt 0 view .LVU42
+ 233 0058 FFF7FEFF 		bl	led_read_blinkspeed
+ 234              	.LVL13:
+  50:Core/Src/console.c ****           snprintf(acCharReadback, MAX_READBACK_CHARS,"%d",ui32UserInput);
+ 235              		.loc 1 50 27 view .LVU43
+ARM GAS  /tmp/cc2qJzX5.s 			page 8
+
+
+ 236 005c 0346     		mov	r3, r0
+ 237              	.LVL14:
+  51:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\nLED BLINKSPEED:\t", 19, HAL_UART_STATE_TIMEOUT);
+ 238              		.loc 1 51 11 is_stmt 1 view .LVU44
+ 239 005e 284A     		ldr	r2, .L27+16
+ 240 0060 0A21     		movs	r1, #10
+ 241 0062 01A8     		add	r0, sp, #4
+ 242              	.LVL15:
+  51:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\nLED BLINKSPEED:\t", 19, HAL_UART_STATE_TIMEOUT);
+ 243              		.loc 1 51 11 is_stmt 0 view .LVU45
+ 244 0064 FFF7FEFF 		bl	snprintf
+ 245              	.LVL16:
+  52:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, acCharReadback, MAX_READBACK_CHARS, HAL_UART_STATE_TIMEOUT);
+ 246              		.loc 1 52 11 is_stmt 1 view .LVU46
+ 247 0068 244C     		ldr	r4, .L27+12
+ 248 006a A023     		movs	r3, #160
+ 249 006c 1322     		movs	r2, #19
+ 250 006e 2549     		ldr	r1, .L27+20
+ 251 0070 2046     		mov	r0, r4
+ 252 0072 FFF7FEFF 		bl	HAL_UART_Transmit
+ 253              	.LVL17:
+  53:Core/Src/console.c ****           HAL_UART_Transmit(&huart2, "\r\n", 3, HAL_UART_STATE_TIMEOUT);
+ 254              		.loc 1 53 11 view .LVU47
+ 255 0076 A023     		movs	r3, #160
+ 256 0078 0A22     		movs	r2, #10
+ 257 007a 01A9     		add	r1, sp, #4
+ 258 007c 2046     		mov	r0, r4
+ 259 007e FFF7FEFF 		bl	HAL_UART_Transmit
+ 260              	.LVL18:
+  54:Core/Src/console.c ****           consoleReturn();
+ 261              		.loc 1 54 11 view .LVU48
+ 262 0082 A023     		movs	r3, #160
+ 263 0084 0322     		movs	r2, #3
+ 264 0086 2049     		ldr	r1, .L27+24
+ 265 0088 2046     		mov	r0, r4
+ 266 008a FFF7FEFF 		bl	HAL_UART_Transmit
+ 267              	.LVL19:
+  55:Core/Src/console.c ****         }
+ 268              		.loc 1 55 11 view .LVU49
+ 269 008e FFF7FEFF 		bl	consoleReturn
+ 270              	.LVL20:
+  55:Core/Src/console.c ****         }
+ 271              		.loc 1 55 11 is_stmt 0 view .LVU50
+ 272              	.LBE3:
+ 273              	.LBE6:
+  88:Core/Src/console.c ****   {
+ 274              		.loc 1 88 3 is_stmt 1 view .LVU51
+ 275 0092 BCE7     		b	.L9
+ 276              	.LVL21:
+ 277              	.L24:
+ 278              	.LBB7:
+ 279              	.LBB4:
+  46:Core/Src/console.c ****           {
+ 280              		.loc 1 46 26 is_stmt 0 view .LVU52
+ 281 0094 0023     		movs	r3, #0
+ 282 0096 DDE7     		b	.L14
+ 283              	.L25:
+ARM GAS  /tmp/cc2qJzX5.s 			page 9
+
+
+ 284              	.LBE4:
+  59:Core/Src/console.c ****           consoleReturn();
+ 285              		.loc 1 59 11 is_stmt 1 view .LVU53
+ 286 0098 FFF7FEFF 		bl	led_enable
+ 287              	.LVL22:
+  60:Core/Src/console.c ****         }
+ 288              		.loc 1 60 11 view .LVU54
+ 289 009c FFF7FEFF 		bl	consoleReturn
+ 290              	.LVL23:
+  60:Core/Src/console.c ****         }
+ 291              		.loc 1 60 11 is_stmt 0 view .LVU55
+ 292              	.LBE7:
+  88:Core/Src/console.c ****   {
+ 293              		.loc 1 88 3 is_stmt 1 view .LVU56
+ 294 00a0 B5E7     		b	.L9
+ 295              	.L11:
+ 296              	.LBB8:
+  75:Core/Src/console.c ****       ui32InvalidInput = (ui32UserInput == 0) ? 1 : 0;
+ 297              		.loc 1 75 7 view .LVU57
+  75:Core/Src/console.c ****       ui32InvalidInput = (ui32UserInput == 0) ? 1 : 0;
+ 298              		.loc 1 75 33 is_stmt 0 view .LVU58
+ 299 00a2 1448     		ldr	r0, .L27+4
+ 300 00a4 FFF7FEFF 		bl	atoi
+ 301              	.LVL24:
+  76:Core/Src/console.c **** 
+ 302              		.loc 1 76 7 is_stmt 1 view .LVU59
+  76:Core/Src/console.c **** 
+ 303              		.loc 1 76 51 is_stmt 0 view .LVU60
+ 304 00a8 0028     		cmp	r0, #0
+  76:Core/Src/console.c **** 
+ 305              		.loc 1 76 51 view .LVU61
+ 306 00aa 0CBF     		ite	eq
+ 307 00ac 0124     		moveq	r4, #1
+ 308 00ae 0024     		movne	r4, #0
+ 309              	.LVL25:
+  78:Core/Src/console.c ****       {
+ 310              		.loc 1 78 7 is_stmt 1 view .LVU62
+  78:Core/Src/console.c ****       {
+ 311              		.loc 1 78 9 is_stmt 0 view .LVU63
+ 312 00b0 1AD1     		bne	.L26
+ 313              	.LVL26:
+ 314              	.L19:
+  82:Core/Src/console.c ****       break;
+ 315              		.loc 1 82 7 is_stmt 1 view .LVU64
+ 316 00b2 FFF7FEFF 		bl	consoleReturn
+ 317              	.LVL27:
+  83:Core/Src/console.c **** 
+ 318              		.loc 1 83 7 view .LVU65
+  83:Core/Src/console.c **** 
+ 319              		.loc 1 83 7 is_stmt 0 view .LVU66
+ 320              	.LBE8:
+  88:Core/Src/console.c ****   {
+ 321              		.loc 1 88 3 is_stmt 1 view .LVU67
+  88:Core/Src/console.c ****   {
+ 322              		.loc 1 88 5 is_stmt 0 view .LVU68
+ 323 00b6 002C     		cmp	r4, #0
+ 324 00b8 A9D0     		beq	.L9
+ARM GAS  /tmp/cc2qJzX5.s 			page 10
+
+
+ 325              	.LVL28:
+ 326              	.L18:
+  90:Core/Src/console.c ****     HAL_UART_Transmit(&huart2, aui8RxBuffer, ui8RxIndex, HAL_UART_STATE_TIMEOUT);
+ 327              		.loc 1 90 5 is_stmt 1 view .LVU69
+ 328 00ba 104C     		ldr	r4, .L27+12
+ 329 00bc A023     		movs	r3, #160
+ 330 00be 0A22     		movs	r2, #10
+ 331 00c0 1249     		ldr	r1, .L27+28
+ 332 00c2 2046     		mov	r0, r4
+ 333 00c4 FFF7FEFF 		bl	HAL_UART_Transmit
+ 334              	.LVL29:
+  91:Core/Src/console.c ****     HAL_UART_Transmit(&huart2, "\" is not a valid input.\r\n", 26, HAL_UART_STATE_TIMEOUT);
+ 335              		.loc 1 91 5 view .LVU70
+ 336 00c8 A023     		movs	r3, #160
+ 337 00ca 114A     		ldr	r2, .L27+32
+ 338 00cc 1278     		ldrb	r2, [r2]	@ zero_extendqisi2
+ 339 00ce 0949     		ldr	r1, .L27+4
+ 340 00d0 2046     		mov	r0, r4
+ 341 00d2 FFF7FEFF 		bl	HAL_UART_Transmit
+ 342              	.LVL30:
+  92:Core/Src/console.c ****     consoleReturn();
+ 343              		.loc 1 92 5 view .LVU71
+ 344 00d6 A023     		movs	r3, #160
+ 345 00d8 1A22     		movs	r2, #26
+ 346 00da 0E49     		ldr	r1, .L27+36
+ 347 00dc 2046     		mov	r0, r4
+ 348 00de FFF7FEFF 		bl	HAL_UART_Transmit
+ 349              	.LVL31:
+  93:Core/Src/console.c ****   }
+ 350              		.loc 1 93 5 view .LVU72
+ 351 00e2 FFF7FEFF 		bl	consoleReturn
+ 352              	.LVL32:
+  96:Core/Src/console.c **** 
+ 353              		.loc 1 96 1 is_stmt 0 view .LVU73
+ 354 00e6 92E7     		b	.L9
+ 355              	.LVL33:
+ 356              	.L26:
+ 357              	.LBB9:
+  80:Core/Src/console.c ****       }
+ 358              		.loc 1 80 9 is_stmt 1 view .LVU74
+ 359 00e8 FFF7FEFF 		bl	led_set_blinkspeed
+ 360              	.LVL34:
+  80:Core/Src/console.c ****       }
+ 361              		.loc 1 80 9 is_stmt 0 view .LVU75
+ 362 00ec E1E7     		b	.L19
+ 363              	.L28:
+ 364 00ee 00BF     		.align	2
+ 365              	.L27:
+ 366 00f0 00000000 		.word	.LANCHOR0
+ 367 00f4 00000000 		.word	.LANCHOR1
+ 368 00f8 00000000 		.word	.LC1
+ 369 00fc 00000000 		.word	huart2
+ 370 0100 18000000 		.word	.LC2
+ 371 0104 1C000000 		.word	.LC3
+ 372 0108 30000000 		.word	.LC4
+ 373 010c 34000000 		.word	.LC5
+ 374 0110 00000000 		.word	.LANCHOR2
+ARM GAS  /tmp/cc2qJzX5.s 			page 11
+
+
+ 375 0114 40000000 		.word	.LC6
+ 376              	.LBE9:
+ 377              		.cfi_endproc
+ 378              	.LFE132:
+ 380              		.section	.rodata.consoleCheckInput.str1.4,"aMS",%progbits,1
+ 381              		.align	2
+ 382              	.LC7:
+ 383 0000 08200800 		.ascii	"\010 \010\000"
+ 384              		.section	.text.consoleCheckInput,"ax",%progbits
+ 385              		.align	1
+ 386              		.syntax unified
+ 387              		.thumb
+ 388              		.thumb_func
+ 389              		.fpu fpv4-sp-d16
+ 391              	consoleCheckInput:
+ 392              	.LFB135:
+ 108:Core/Src/console.c **** static void consoleCheckInput(void)
+ 109:Core/Src/console.c **** {
+ 393              		.loc 1 109 1 is_stmt 1 view -0
+ 394              		.cfi_startproc
+ 395              		@ args = 0, pretend = 0, frame = 0
+ 396              		@ frame_needed = 0, uses_anonymous_args = 0
+ 110:Core/Src/console.c ****     if(g_ui8NewDataFlag)
+ 397              		.loc 1 110 5 view .LVU77
+ 398              		.loc 1 110 8 is_stmt 0 view .LVU78
+ 399 0000 204B     		ldr	r3, .L40
+ 400 0002 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 401              		.loc 1 110 7 view .LVU79
+ 402 0004 002B     		cmp	r3, #0
+ 403 0006 3BD0     		beq	.L35
+ 109:Core/Src/console.c ****     if(g_ui8NewDataFlag)
+ 404              		.loc 1 109 1 view .LVU80
+ 405 0008 70B5     		push	{r4, r5, r6, lr}
+ 406              	.LCFI6:
+ 407              		.cfi_def_cfa_offset 16
+ 408              		.cfi_offset 4, -16
+ 409              		.cfi_offset 5, -12
+ 410              		.cfi_offset 6, -8
+ 411              		.cfi_offset 14, -4
+ 111:Core/Src/console.c ****     {
+ 112:Core/Src/console.c ****       if(ui8RxChar == ASCII_BACKSPACE)
+ 412              		.loc 1 112 7 is_stmt 1 view .LVU81
+ 413              		.loc 1 112 20 is_stmt 0 view .LVU82
+ 414 000a 1F4B     		ldr	r3, .L40+4
+ 415 000c 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 416              		.loc 1 112 9 view .LVU83
+ 417 000e 082B     		cmp	r3, #8
+ 418 0010 17D0     		beq	.L38
+ 113:Core/Src/console.c ****       {
+ 114:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, "\b \b", 3, HAL_UART_STATE_TIMEOUT);
+ 115:Core/Src/console.c ****         if(ui8RxIndex > 0)
+ 116:Core/Src/console.c ****         {
+ 117:Core/Src/console.c ****           ui8RxIndex--;
+ 118:Core/Src/console.c ****         }
+ 119:Core/Src/console.c ****       }
+ 120:Core/Src/console.c ****       else if(ui8RxChar == ASCII_ENTER)
+ 419              		.loc 1 120 12 is_stmt 1 view .LVU84
+ARM GAS  /tmp/cc2qJzX5.s 			page 12
+
+
+ 420              		.loc 1 120 14 is_stmt 0 view .LVU85
+ 421 0012 0D2B     		cmp	r3, #13
+ 422 0014 23D0     		beq	.L39
+ 121:Core/Src/console.c ****       {
+ 122:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, "\r\n", 2, HAL_UART_STATE_TIMEOUT);
+ 123:Core/Src/console.c **** #ifdef CONSOLE_DEBUG
+ 124:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, "YOU TYPED:", 11, HAL_UART_STATE_TIMEOUT);
+ 125:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, aui8RxBuffer, ui8RxIndex, HAL_UART_STATE_TIMEOUT);
+ 126:Core/Src/console.c **** #endif
+ 127:Core/Src/console.c ****         aui8RxBuffer[ui8RxIndex] = '\0';
+ 128:Core/Src/console.c ****         consoleProcessBuffer();
+ 129:Core/Src/console.c **** 
+ 130:Core/Src/console.c ****         aui8RxBuffer[0] = ' ';
+ 131:Core/Src/console.c ****         ui8RxIndex = 0;
+ 132:Core/Src/console.c ****       }
+ 133:Core/Src/console.c ****       else
+ 134:Core/Src/console.c ****       {
+ 135:Core/Src/console.c ****         aui8RxBuffer[ui8RxIndex] = ui8RxChar;
+ 423              		.loc 1 135 9 is_stmt 1 view .LVU86
+ 424              		.loc 1 135 21 is_stmt 0 view .LVU87
+ 425 0016 1D4C     		ldr	r4, .L40+8
+ 426 0018 2178     		ldrb	r1, [r4]	@ zero_extendqisi2
+ 427              		.loc 1 135 34 view .LVU88
+ 428 001a 1D48     		ldr	r0, .L40+12
+ 429 001c 4354     		strb	r3, [r0, r1]
+ 136:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, &aui8RxBuffer[ui8RxIndex], 1, HAL_UART_STATE_TIMEOUT);
+ 430              		.loc 1 136 9 is_stmt 1 view .LVU89
+ 431 001e A023     		movs	r3, #160
+ 432 0020 0122     		movs	r2, #1
+ 433 0022 0144     		add	r1, r1, r0
+ 434 0024 1B48     		ldr	r0, .L40+16
+ 435 0026 FFF7FEFF 		bl	HAL_UART_Transmit
+ 436              	.LVL35:
+ 137:Core/Src/console.c ****         ui8RxIndex++; //NOTE Add Bound checking
+ 437              		.loc 1 137 9 view .LVU90
+ 438              		.loc 1 137 19 is_stmt 0 view .LVU91
+ 439 002a 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 440 002c 0133     		adds	r3, r3, #1
+ 441 002e 2370     		strb	r3, [r4]
+ 442              	.L32:
+ 138:Core/Src/console.c ****       }
+ 139:Core/Src/console.c **** 
+ 140:Core/Src/console.c ****       // HAL_UART_Transmit(&huart2, '\n', 1, HAL_UART_STATE_TIMEOUT);
+ 141:Core/Src/console.c ****       g_ui8NewDataFlag = 0;
+ 443              		.loc 1 141 7 is_stmt 1 view .LVU92
+ 444              		.loc 1 141 24 is_stmt 0 view .LVU93
+ 445 0030 144B     		ldr	r3, .L40
+ 446 0032 0022     		movs	r2, #0
+ 447 0034 1A70     		strb	r2, [r3]
+ 142:Core/Src/console.c ****       HAL_UART_Receive_IT(&huart2,&ui8RxChar,1);
+ 448              		.loc 1 142 7 is_stmt 1 view .LVU94
+ 449 0036 0122     		movs	r2, #1
+ 450 0038 1349     		ldr	r1, .L40+4
+ 451 003a 1648     		ldr	r0, .L40+16
+ 452 003c FFF7FEFF 		bl	HAL_UART_Receive_IT
+ 453              	.LVL36:
+ 143:Core/Src/console.c ****     }
+ARM GAS  /tmp/cc2qJzX5.s 			page 13
+
+
+ 144:Core/Src/console.c **** }...
+ 454              		.loc 1 144 1 is_stmt 0 view .LVU95
+ 455 0040 70BD     		pop	{r4, r5, r6, pc}
+ 456              	.L38:
+ 114:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, "\b \b", 3, HAL_UART_STATE_TIMEOUT);
+ 457              		.loc 1 114 9 is_stmt 1 view .LVU96
+ 458 0042 A023     		movs	r3, #160
+ 459 0044 0322     		movs	r2, #3
+ 460 0046 1449     		ldr	r1, .L40+20
+ 461 0048 1248     		ldr	r0, .L40+16
+ 462 004a FFF7FEFF 		bl	HAL_UART_Transmit
+ 463              	.LVL37:
+ 115:Core/Src/console.c ****         if(ui8RxIndex > 0)
+ 464              		.loc 1 115 9 view .LVU97
+ 115:Core/Src/console.c ****         if(ui8RxIndex > 0)
+ 465              		.loc 1 115 23 is_stmt 0 view .LVU98
+ 466 004e 0F4B     		ldr	r3, .L40+8
+ 467 0050 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 115:Core/Src/console.c ****         if(ui8RxIndex > 0)
+ 468              		.loc 1 115 11 view .LVU99
+ 469 0052 002B     		cmp	r3, #0
+ 470 0054 ECD0     		beq	.L32
+ 117:Core/Src/console.c ****           ui8RxIndex--;
+ 471              		.loc 1 117 11 is_stmt 1 view .LVU100
+ 117:Core/Src/console.c ****           ui8RxIndex--;
+ 472              		.loc 1 117 21 is_stmt 0 view .LVU101
+ 473 0056 013B     		subs	r3, r3, #1
+ 474 0058 0C4A     		ldr	r2, .L40+8
+ 475 005a 1370     		strb	r3, [r2]
+ 476 005c E8E7     		b	.L32
+ 477              	.L39:
+ 122:Core/Src/console.c ****         HAL_UART_Transmit(&huart2, "\r\n", 2, HAL_UART_STATE_TIMEOUT);
+ 478              		.loc 1 122 9 is_stmt 1 view .LVU102
+ 479 005e A023     		movs	r3, #160
+ 480 0060 0222     		movs	r2, #2
+ 481 0062 0E49     		ldr	r1, .L40+24
+ 482 0064 0B48     		ldr	r0, .L40+16
+ 483 0066 FFF7FEFF 		bl	HAL_UART_Transmit
+ 484              	.LVL38:
+ 127:Core/Src/console.c ****         aui8RxBuffer[ui8RxIndex] = '\0';
+ 485              		.loc 1 127 9 view .LVU103
+ 127:Core/Src/console.c ****         aui8RxBuffer[ui8RxIndex] = '\0';
+ 486              		.loc 1 127 21 is_stmt 0 view .LVU104
+ 487 006a 084C     		ldr	r4, .L40+8
+ 488 006c 2378     		ldrb	r3, [r4]	@ zero_extendqisi2
+ 127:Core/Src/console.c ****         aui8RxBuffer[ui8RxIndex] = '\0';
+ 489              		.loc 1 127 34 view .LVU105
+ 490 006e 084E     		ldr	r6, .L40+12
+ 491 0070 0025     		movs	r5, #0
+ 492 0072 F554     		strb	r5, [r6, r3]
+ 128:Core/Src/console.c ****         consoleProcessBuffer();
+ 493              		.loc 1 128 9 is_stmt 1 view .LVU106
+ 494 0074 FFF7FEFF 		bl	consoleProcessBuffer
+ 495              	.LVL39:
+ 130:Core/Src/console.c ****         aui8RxBuffer[0] = ' ';
+ 496              		.loc 1 130 9 view .LVU107
+ 130:Core/Src/console.c ****         aui8RxBuffer[0] = ' ';
+ARM GAS  /tmp/cc2qJzX5.s 			page 14
+
+
+ 497              		.loc 1 130 25 is_stmt 0 view .LVU108
+ 498 0078 2023     		movs	r3, #32
+ 499 007a 3370     		strb	r3, [r6]
+ 131:Core/Src/console.c ****         ui8RxIndex = 0;
+ 500              		.loc 1 131 9 is_stmt 1 view .LVU109
+ 131:Core/Src/console.c ****         ui8RxIndex = 0;
+ 501              		.loc 1 131 20 is_stmt 0 view .LVU110
+ 502 007c 2570     		strb	r5, [r4]
+ 503 007e D7E7     		b	.L32
+ 504              	.L35:
+ 505              	.LCFI7:
+ 506              		.cfi_def_cfa_offset 0
+ 507              		.cfi_restore 4
+ 508              		.cfi_restore 5
+ 509              		.cfi_restore 6
+ 510              		.cfi_restore 14
+ 511 0080 7047     		bx	lr
+ 512              	.L41:
+ 513 0082 00BF     		.align	2
+ 514              	.L40:
+ 515 0084 00000000 		.word	.LANCHOR3
+ 516 0088 00000000 		.word	.LANCHOR4
+ 517 008c 00000000 		.word	.LANCHOR2
+ 518 0090 00000000 		.word	.LANCHOR1
+ 519 0094 00000000 		.word	huart2
+ 520 0098 00000000 		.word	.LC7
+ 521 009c 30000000 		.word	.LC4
+ 522              		.cfi_endproc
+ 523              	.LFE135:
+ 525              		.section	.text.consoleInit,"ax",%progbits
+ 526              		.align	1
+ 527              		.global	consoleInit
+ 528              		.syntax unified
+ 529              		.thumb
+ 530              		.thumb_func
+ 531              		.fpu fpv4-sp-d16
+ 533              	consoleInit:
+ 534              	.LFB130:
+  15:Core/Src/console.c **** {
+ 535              		.loc 1 15 1 is_stmt 1 view -0
+ 536              		.cfi_startproc
+ 537              		@ args = 0, pretend = 0, frame = 0
+ 538              		@ frame_needed = 0, uses_anonymous_args = 0
+ 539 0000 08B5     		push	{r3, lr}
+ 540              	.LCFI8:
+ 541              		.cfi_def_cfa_offset 8
+ 542              		.cfi_offset 3, -8
+ 543              		.cfi_offset 14, -4
+  16:Core/Src/console.c ****   led_set_blinkspeed(1);
+ 544              		.loc 1 16 3 view .LVU112
+ 545 0002 0120     		movs	r0, #1
+ 546 0004 FFF7FEFF 		bl	led_set_blinkspeed
+ 547              	.LVL40:
+  17:Core/Src/console.c ****   consoleHomePrint();
+ 548              		.loc 1 17 3 view .LVU113
+ 549 0008 FFF7FEFF 		bl	consoleHomePrint
+ 550              	.LVL41:
+ARM GAS  /tmp/cc2qJzX5.s 			page 15
+
+
+  18:Core/Src/console.c ****   HAL_UART_Receive_IT(&huart2,&ui8RxChar,1);
+ 551              		.loc 1 18 3 view .LVU114
+ 552 000c 0122     		movs	r2, #1
+ 553 000e 0249     		ldr	r1, .L44
+ 554 0010 0248     		ldr	r0, .L44+4
+ 555 0012 FFF7FEFF 		bl	HAL_UART_Receive_IT
+ 556              	.LVL42:
+  19:Core/Src/console.c **** }
+ 557              		.loc 1 19 1 is_stmt 0 view .LVU115
+ 558 0016 08BD     		pop	{r3, pc}
+ 559              	.L45:
+ 560              		.align	2
+ 561              	.L44:
+ 562 0018 00000000 		.word	.LANCHOR4
+ 563 001c 00000000 		.word	huart2
+ 564              		.cfi_endproc
+ 565              	.LFE130:
+ 567              		.section	.text.consoleUpdate,"ax",%progbits
+ 568              		.align	1
+ 569              		.global	consoleUpdate
+ 570              		.syntax unified
+ 571              		.thumb
+ 572              		.thumb_func
+ 573              		.fpu fpv4-sp-d16
+ 575              	consoleUpdate:
+ 576              	.LFB131:
+  22:Core/Src/console.c **** {
+ 577              		.loc 1 22 1 is_stmt 1 view -0
+ 578              		.cfi_startproc
+ 579              		@ args = 0, pretend = 0, frame = 0
+ 580              		@ frame_needed = 0, uses_anonymous_args = 0
+ 581 0000 08B5     		push	{r3, lr}
+ 582              	.LCFI9:
+ 583              		.cfi_def_cfa_offset 8
+ 584              		.cfi_offset 3, -8
+ 585              		.cfi_offset 14, -4
+  23:Core/Src/console.c ****     consoleCheckInput();
+ 586              		.loc 1 23 5 view .LVU117
+ 587 0002 FFF7FEFF 		bl	consoleCheckInput
+ 588              	.LVL43:
+  24:Core/Src/console.c **** }
+ 589              		.loc 1 24 1 is_stmt 0 view .LVU118
+ 590 0006 08BD     		pop	{r3, pc}
+ 591              		.cfi_endproc
+ 592              	.LFE131:
+ 594              		.global	g_ui8NewDataFlag
+ 595              		.section	.bss.aui8RxBuffer,"aw",%nobits
+ 596              		.align	2
+ 597              		.set	.LANCHOR1,. + 0
+ 600              	aui8RxBuffer:
+ 601 0000 00000000 		.space	256
+ 601      00000000 
+ 601      00000000 
+ 601      00000000 
+ 601      00000000 
+ 602              		.section	.bss.eConsoleState,"aw",%nobits
+ 603              		.align	2
+ARM GAS  /tmp/cc2qJzX5.s 			page 16
+
+
+ 604              		.set	.LANCHOR0,. + 0
+ 607              	eConsoleState:
+ 608 0000 00000000 		.space	4
+ 609              		.section	.bss.g_ui8NewDataFlag,"aw",%nobits
+ 610              		.set	.LANCHOR3,. + 0
+ 613              	g_ui8NewDataFlag:
+ 614 0000 00       		.space	1
+ 615              		.section	.bss.ui8RxChar,"aw",%nobits
+ 616              		.set	.LANCHOR4,. + 0
+ 619              	ui8RxChar:
+ 620 0000 00       		.space	1
+ 621              		.section	.bss.ui8RxIndex,"aw",%nobits
+ 622              		.set	.LANCHOR2,. + 0
+ 625              	ui8RxIndex:
+ 626 0000 00       		.space	1
+ 627              		.text
+ 628              	.Letext0:
+ 629              		.file 2 "/usr/lib/gcc/arm-none-eabi/10.3.1/include/stdint.h"
+ 630              		.file 3 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f446xx.h"
+ 631              		.file 4 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h"
+ 632              		.file 5 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_dma.h"
+ 633              		.file 6 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h"
+ 634              		.file 7 "Core/Inc/console.h"
+ 635              		.file 8 "Core/Inc/usart.h"
+ 636              		.file 9 "<built-in>"
+ 637              		.file 10 "Core/Inc/led.h"
+ARM GAS  /tmp/cc2qJzX5.s 			page 17
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 console.c
+     /tmp/cc2qJzX5.s:18     .rodata.consoleHomePrint.str1.4:0000000000000000 $d
+     /tmp/cc2qJzX5.s:24     .text.consoleHomePrint:0000000000000000 $t
+     /tmp/cc2qJzX5.s:31     .text.consoleHomePrint:0000000000000000 consoleHomePrint
+     /tmp/cc2qJzX5.s:55     .text.consoleHomePrint:0000000000000010 $d
+     /tmp/cc2qJzX5.s:61     .text.consoleReturn:0000000000000000 $t
+     /tmp/cc2qJzX5.s:67     .text.consoleReturn:0000000000000000 consoleReturn
+     /tmp/cc2qJzX5.s:91     .text.consoleReturn:0000000000000010 $d
+     /tmp/cc2qJzX5.s:96     .rodata.consoleProcessBuffer.str1.4:0000000000000000 $d
+     /tmp/cc2qJzX5.s:115    .text.consoleProcessBuffer:0000000000000000 $t
+     /tmp/cc2qJzX5.s:121    .text.consoleProcessBuffer:0000000000000000 consoleProcessBuffer
+     /tmp/cc2qJzX5.s:366    .text.consoleProcessBuffer:00000000000000f0 $d
+     /tmp/cc2qJzX5.s:381    .rodata.consoleCheckInput.str1.4:0000000000000000 $d
+     /tmp/cc2qJzX5.s:385    .text.consoleCheckInput:0000000000000000 $t
+     /tmp/cc2qJzX5.s:391    .text.consoleCheckInput:0000000000000000 consoleCheckInput
+     /tmp/cc2qJzX5.s:515    .text.consoleCheckInput:0000000000000084 $d
+     /tmp/cc2qJzX5.s:526    .text.consoleInit:0000000000000000 $t
+     /tmp/cc2qJzX5.s:533    .text.consoleInit:0000000000000000 consoleInit
+     /tmp/cc2qJzX5.s:562    .text.consoleInit:0000000000000018 $d
+     /tmp/cc2qJzX5.s:568    .text.consoleUpdate:0000000000000000 $t
+     /tmp/cc2qJzX5.s:575    .text.consoleUpdate:0000000000000000 consoleUpdate
+     /tmp/cc2qJzX5.s:613    .bss.g_ui8NewDataFlag:0000000000000000 g_ui8NewDataFlag
+     /tmp/cc2qJzX5.s:596    .bss.aui8RxBuffer:0000000000000000 $d
+     /tmp/cc2qJzX5.s:600    .bss.aui8RxBuffer:0000000000000000 aui8RxBuffer
+     /tmp/cc2qJzX5.s:603    .bss.eConsoleState:0000000000000000 $d
+     /tmp/cc2qJzX5.s:607    .bss.eConsoleState:0000000000000000 eConsoleState
+     /tmp/cc2qJzX5.s:614    .bss.g_ui8NewDataFlag:0000000000000000 $d
+     /tmp/cc2qJzX5.s:619    .bss.ui8RxChar:0000000000000000 ui8RxChar
+     /tmp/cc2qJzX5.s:620    .bss.ui8RxChar:0000000000000000 $d
+     /tmp/cc2qJzX5.s:625    .bss.ui8RxIndex:0000000000000000 ui8RxIndex
+     /tmp/cc2qJzX5.s:626    .bss.ui8RxIndex:0000000000000000 $d
+
+UNDEFINED SYMBOLS
+HAL_UART_Transmit
+huart2
+atoi
+led_disable
+led_read_blinkspeed
+snprintf
+led_enable
+led_set_blinkspeed
+HAL_UART_Receive_IT
